@@ -1,40 +1,36 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Configuration
-    const API_BASE_URL = 'http://localhost:8080'; // Backend server URL
-    
+    const API_BASE_URL = 'http://localhost:8080';
+    let accessToken = localStorage.getItem('procoreAccessToken') || '';
+
     // DOM elements
     const getAuthBtn = document.getElementById('getAuthBtn');
     const getTokenBtn = document.getElementById('getTokenBtn');
     const authCodeInput = document.getElementById('authCode');
-    const tokenDisplay = document.getElementById('tokenDisplay');
+    const tokenStatus = document.getElementById('tokenStatus');
     const refreshLogsBtn = document.getElementById('refreshLogsBtn');
     const logsList = document.getElementById('logsList');
     const createLogForm = document.getElementById('createLogForm');
+    const fromDateInput = document.getElementById('fromDate');
+    const toDateInput = document.getElementById('toDate');
+    const filterLogsBtn = document.getElementById('filterLogsBtn');
+    const clearFilterBtn = document.getElementById('clearFilterBtn');
 
-    // Current access token
-    let accessToken = localStorage.getItem('procoreAccessToken') || '';
-    if (accessToken) {
-        tokenDisplay.textContent = `Current Token: ${accessToken}`;
+    // Update token status display
+    function updateTokenStatus() {
+        tokenStatus.textContent = accessToken ? '✔ Token available' : '✖ No token';
+        tokenStatus.className = accessToken ? 'token-valid' : 'token-invalid';
     }
+
+    // Initialize
+    updateTokenStatus();
 
     // Event listeners
     getAuthBtn.addEventListener('click', getAuthorizationCode);
     getTokenBtn.addEventListener('click', getAccessToken);
-    refreshLogsBtn.addEventListener('click', fetchAccidentLogs);
+    refreshLogsBtn.addEventListener('click', () => fetchAccidentLogs());
+    filterLogsBtn.addEventListener('click', applyDateFilter);
+    clearFilterBtn.addEventListener('click', clearDateFilter);
     createLogForm.addEventListener('submit', handleCreateLog);
-
-    // Utility function for loading states
-    function setLoading(element, isLoading) {
-        if (isLoading) {
-            element.classList.add('loading');
-            element.disabled = true;
-            element.innerHTML = element.innerHTML + ' <span class="spinner"></span>';
-        } else {
-            element.classList.remove('loading');
-            element.disabled = false;
-            element.innerHTML = element.innerHTML.replace(' <span class="spinner"></span>', '');
-        }
-    }
 
     // Get authorization code
     function getAuthorizationCode() {
@@ -43,11 +39,52 @@ document.addEventListener('DOMContentLoaded', function() {
         window.open(authUrl, '_blank');
     }
 
+    // Handles errors from fetch calls
+    function handleError(error) {
+        console.error('API Error:', error);
+        // Show the actual error message if available
+        const message = error.response?.data?.error || error.message || 'An unexpected error occurred';
+        showError(message);
+    }
+
+    // Formats time into "HH:MM" format
+    function formatTime(hour, minute) {
+        const hh = String(hour).padStart(2, '0');
+        const mm = String(minute).padStart(2, '0');
+        return `${hh}:${mm}`;
+    }
+
+    // Loading state toggle for buttons
+    function setLoading(button, isLoading) {
+        if (isLoading) {
+            button.disabled = true;
+            button.dataset.originalText = button.textContent;
+            button.textContent = 'Loading...';
+        } else {
+            button.disabled = false;
+            if (button.dataset.originalText) {
+                button.textContent = button.dataset.originalText;
+                delete button.dataset.originalText;
+            }
+        }
+    }
+
+    // Handles HTTP responses
+    function handleResponse(response) {
+        if (!response.ok) {
+            return response.json().then(errorData => {
+                const error = errorData.error || 'An error occurred while processing the request';
+                throw new Error(error);
+            });
+        }
+        return response.json();
+    }
+    
     // Get access token
     function getAccessToken() {
         const code = authCodeInput.value.trim();
         if (!code) {
-            alert('Please enter the authorization code');
+            showError('Please enter the authorization code');
             return;
         }
 
@@ -55,103 +92,104 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch(`${API_BASE_URL}/api/auth/token`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ code: code })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || 'Failed to get access token');
-                });
-            }
-            return response.json();
-        })
+        .then(handleResponse)
         .then(data => {
             if (data.access_token) {
                 accessToken = data.access_token;
                 localStorage.setItem('procoreAccessToken', accessToken);
-                tokenDisplay.textContent = `Current Token: ${accessToken}`;
+                updateTokenStatus();
                 authCodeInput.value = '';
-                fetchAccidentLogs();
-            } else {
-                throw new Error('No access token received');
+                // fetchAccidentLogs();
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            showError(`Error getting access token: ${error.message}\n\nPossible solutions:\n1. Verify the authorization code is correct\n2. Check the backend server is running\n3. Ensure your network connection is stable`);
-        })
-        .finally(() => {
-            setLoading(getTokenBtn, false);
-        });
+        .catch(handleError)
+        .finally(() => setLoading(getTokenBtn, false));
     }
 
-    // Fetch accident logs
-    function fetchAccidentLogs() {
+    function fetchAccidentLogs(fromDate = '', toDate = '') {
         if (!accessToken) {
-            showError('Please get an access token first');
+            showError('Please authenticate first');
             return;
         }
-
+        console.log("come form the applyDateFilter");
+        
         setLoading(refreshLogsBtn, true);
-        logsList.innerHTML = '<div class="loading-message">Loading accident logs...</div>';
+        
+        let url = `${API_BASE_URL}/api/accident-logs/filter`;
+        console.log("url:",url);
+        
+        const params = new URLSearchParams();
+        
+        // Use the correct parameter names expected by the backend
+        if (fromDate) params.append('filters[date][gte]', fromDate);
+        if (toDate) params.append('filters[date][lte]', toDate);
+        
+        if (params.toString()) url += `?${params.toString()}`;
+    
+        fetch(url, {
+            headers: { 
+                'Authorization': `Bearer ${accessToken}`,
+                'Procore-Company-Id': '4264807' // Add this if required
+            }
+        })
+        .then(handleResponse)
+        .then(displayAccidentLogs)
+        .catch(handleError)
+        .finally(() => setLoading(refreshLogsBtn, false));
+    }
 
-        fetch(`${API_BASE_URL}/api/accident-logs`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || 'Failed to fetch accident logs');
-                });
-            }
-            return response.json();
-        })
-        .then(logs => {
-            displayAccidentLogs(logs);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            logsList.innerHTML = `<div class="error-message">${error.message}</div>`;
-            showError(`Error fetching accident logs: ${error.message}`);
-        })
-        .finally(() => {
-            setLoading(refreshLogsBtn, false);
-        });
+    // Apply date filter
+    function applyDateFilter() {
+        const fromDate = fromDateInput.value;
+        const toDate = toDateInput.value;
+        console.log("fromDate :",fromDate);
+        console.log("toDate",toDate);
+        
+        
+        if (!fromDate && !toDate) {
+            showError('Please enter at least one date');
+            return;
+        }
+        
+        fetchAccidentLogs(fromDate, toDate);
+    }
+
+    // Clear date filter
+    function clearDateFilter() {
+        fromDateInput.value = '';
+        toDateInput.value = '';
+        fetchAccidentLogs();
     }
 
     // Display accident logs
     function displayAccidentLogs(logs) {
-        logsList.innerHTML = '';
+        logsList.innerHTML = logs.length ? '' : '<div class="no-logs">No logs found</div>';
         
-        if (!logs || logs.length === 0) {
-            logsList.innerHTML = '<div class="no-logs">No accident logs found</div>';
-            return;
-        }
-
         logs.forEach(log => {
             const logElement = document.createElement('div');
             logElement.className = 'log-item';
             logElement.innerHTML = `
-                <h3>Log #${log.id}</h3>
+                <div class="log-header">
+                    <h3>Log #${log.id}</h3>
+                    <button class="delete-btn" data-id="${log.id}">Delete</button>
+                </div>
                 <p><strong>Date:</strong> ${formatDate(log.date)}</p>
-                <p><strong>Time:</strong> ${log.time_hour}:${log.time_minute.toString().padStart(2, '0')}</p>
+                <p><strong>Time:</strong> ${formatTime(log.time_hour, log.time_minute)}</p>
                 <p><strong>Involved:</strong> ${log.involved_name} (${log.involved_company})</p>
-                <p><strong>Comments:</strong> ${log.comments || 'N/A'}</p>
-                <button class="delete-btn" data-id="${log.id}">Delete Log</button>
+                ${log.comments ? `<p><strong>Comments:</strong> ${log.comments}</p>` : ''}
             `;
             logsList.appendChild(logElement);
         });
 
-        // Add event listeners to delete buttons
-        document.querySelectorAll('.delete-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const logId = this.getAttribute('data-id');
-                deleteAccidentLog(logId);
+        // Add delete event listeners
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (confirm('Delete this log?')) {
+                    deleteAccidentLog(e.target.dataset.id);
+                }
             });
         });
     }

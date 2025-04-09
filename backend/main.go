@@ -35,9 +35,9 @@ func main() {
 	})
 
 	// Routes
-	// router.GET("/api/auth/token", handlers.GetAuthToken)
 	router.POST("/api/auth/token", handlers.GetAuthToken)
 	router.GET("/api/accident-logs", handlers.GetAccidentLogs)
+	router.GET("/api/accident-logs/filter", handlers.GetFilteredAccidentLogs)
 	router.POST("/api/accident-logs", handlers.CreateAccidentLog)
 	router.DELETE("/api/accident-logs/:id", handlers.DeleteAccidentLog)
 

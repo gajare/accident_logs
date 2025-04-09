@@ -1,99 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Procore Accident Logs</title>
-  <link rel="stylesheet" href="styles.css">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procore Accident Logs</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1>Procore Accident Logs</h1>
-      
-      <div class="auth-section">
-        <h2>Authentication</h2>
-        <button id="getAuthBtn" class="btn btn-primary">Get Authorization Code</button>
-        
-        <div class="auth-input-group">
-          <input type="text" id="authCode" class="auth-input" placeholder="Paste authorization code here">
-          <button id="getTokenBtn" class="btn btn-primary">Get Access Token</button>
-        </div>
-        
-        <div class="token-display" id="tokenDisplay">
-          <strong>Current Token:</strong>
-          <div id="tokenValue"></div>
-        </div>
-      </div>
-    </header>
+    <div class="container">
+        <header>
+            <h1>Procore Accident Logs</h1>
+            <div class="auth-section">
+                <button id="getAuthBtn" class="btn">Get Authorization Code</button>
+                <div class="auth-input">
+                    <input type="text" id="authCode" placeholder="Paste authorization code">
+                    <button id="getTokenBtn" class="btn">Get Access Token</button>
+                </div>
+                <div id="tokenStatus" class="token-status"></div>
+            </div>
+        </header>
 
-    <main>
-      <section class="section">
-        <div class="section-header">
-          <h2 class="section-title">Accident Logs</h2>
-          <button id="refreshLogsBtn" class="btn btn-primary">Refresh Logs</button>
-        </div>
-        
-        <div class="log-list" id="logsList">
-          <!-- Logs will be dynamically inserted here -->
-          <div class="loading-message">Loading accident logs...</div>
-        </div>
-      </section>
+        <main>
+            <section class="filters">
+                <h2>Filter Logs</h2>
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="fromDate">From Date:</label>
+                        <input type="date" id="fromDate">
+                    </div>
+                    <div class="filter-group">
+                        <label for="toDate">To Date:</label>
+                        <input type="date" id="toDate">
+                    </div>
+                    <div class="filter-buttons">
+                        <button id="filterLogsBtn" class="btn">Apply Filter</button>
+                        <button id="clearFilterBtn" class="btn btn-secondary">Clear Filter</button>
+                    </div>
+                </div>
+            </section>
 
-      <section class="section">
-        <h2 class="section-title">Create New Accident Log</h2>
-        
-        <form id="createLogForm">
-          <div class="form-group">
-            <label for="comments" class="form-label">Comments:</label>
-            <textarea id="comments" class="form-control" required></textarea>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label for="date" class="form-label">Date:</label>
-              <input type="date" id="date" class="form-control" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="datetime" class="form-label">Date/Time:</label>
-              <input type="datetime-local" id="datetime" class="form-control" required>
-            </div>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label for="involvedCompany" class="form-label">Involved Company:</label>
-              <input type="text" id="involvedCompany" class="form-control" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="involvedName" class="form-label">Involved Name:</label>
-              <input type="text" id="involvedName" class="form-control" required>
-            </div>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label for="timeHour" class="form-label">Time Hour:</label>
-              <input type="number" id="timeHour" class="form-control" min="0" max="23" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="timeMinute" class="form-label">Time Minute:</label>
-              <input type="number" id="timeMinute" class="form-control" min="0" max="59" required>
-            </div>
-          </div>
-          
-          <button type="submit" class="btn btn-success" style="width: 100%; padding: 1rem;">
-            Create Log
-          </button>
-        </form>
-      </section>
-    </main>
-  </div>
+            <section class="logs-section">
+                <div class="section-header">
+                    <h2>Accident Logs</h2>
+                    <button id="refreshLogsBtn" class="btn">Refresh Logs</button>
+                </div>
+                <div class="logs-list" id="logsList">
+                    <!-- Logs will be displayed here -->
+                </div>
+            </section>
 
-  <script src="app.js"></script>
+            <section class="create-log">
+                <h2>Create New Accident Log</h2>
+                <form id="createLogForm">
+                    <div class="form-group">
+                        <label for="involvedName">Involved Name: <span class="required">*</span></label>
+                        <input type="text" id="involvedName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="involvedCompany">Involved Company: <span class="required">*</span></label>
+                        <input type="text" id="involvedCompany" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="date">Date: <span class="required">*</span></label>
+                        <input type="date" id="date" required>
+                    </div>
+                    <div class="form-group time-group">
+                        <div class="time-input">
+                            <label for="timeHour">Hour: <span class="required">*</span></label>
+                            <input type="number" id="timeHour" min="0" max="23" required>
+                        </div>
+                        <div class="time-input">
+                            <label for="timeMinute">Minute: <span class="required">*</span></label>
+                            <input type="number" id="timeMinute" min="0" max="59" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="datetime">Date/Time:</label>
+                        <input type="datetime-local" id="datetime">
+                    </div>
+                    <div class="form-group">
+                        <label for="comments">Comments:</label>
+                        <textarea id="comments"></textarea>
+                    </div>
+                    <button type="submit" class="btn submit-btn">Create Log</button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
 </body>
 </html>

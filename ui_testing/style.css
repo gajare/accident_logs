@@ -137,4 +137,48 @@
   form button:hover {
     background: #45a049;
   }
-  
+  .loading-message, .no-logs {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+.error-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #e74c3c;
+    color: white;
+    padding: 15px;
+    border-radius: 5px;
+    z-index: 1000;
+    max-width: 400px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+}
+
+.success-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #2ecc71;
+    color: white;
+    padding: 15px;
+    border-radius: 5px;
+    z-index: 1000;
+    max-width: 400px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+}
+
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
