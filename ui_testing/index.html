@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Procore Accident Logs</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>Procore Accident Logs</h1>
+    <ul>
+      <li><a href="#auth">Authentication</a></li>
+      <li><a href="#logs">Logs</a></li>
+      <li><a href="#new-log">Create Log</a></li>
+    </ul>
+  </nav>
+
+  <section class="hero">
+    <div class="overlay">
+      <h2>Welcome to Accident Logging Dashboard</h2>
+    </div>
+  </section>
+
+  <section id="auth" class="container">
+    <h2>Authentication</h2>
+    <button>Get Authorization Code</button>
+    <input type="text" placeholder="Paste authorization code here"/>
+    <button>Get Access Token</button>
+    <p><strong>Current Token:</strong> <code>eyJhbGciOiJFUzUxMiJ9...</code></p>
+  </section>
+
+  <section id="logs" class="container">
+    <h2>Accident Logs</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Log #</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Involved</th>
+          <th>Comments</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Sample Logs -->
+        <tr>
+          <td>788</td>
+          <td>4/9/2025</td>
+          <td>07:00</td>
+          <td>User 933</td>
+          <td>Automated log #933</td>
+          <td><button class="delete">Delete</button></td>
+        </tr>
+        <tr>
+          <td>789</td>
+          <td>4/9/2025</td>
+          <td>07:30</td>
+          <td>User 871</td>
+          <td>Automated log #871</td>
+          <td><button class="delete">Delete</button></td>
+        </tr>
+        <!-- Add more rows as needed -->
+      </tbody>
+    </table>
+    <button class="refresh">Refresh Logs</button>
+  </section>
+
+  <section id="new-log" class="container">
+    <h2>Create New Accident Log</h2>
+    <form>
+      <input type="text" placeholder="Comments"/>
+      <input type="date" />
+      <input type="datetime-local" />
+      <input type="text" placeholder="Involved Company"/>
+      <input type="text" placeholder="Involved Name"/>
+      <input type="number" placeholder="Time Hour"/>
+      <input type="number" placeholder="Time Minute"/>
+      <button type="submit">Create Log</button>
+    </form>
+  </section>
+</body>
+</html>
