@@ -39,7 +39,9 @@ func main() {
 	router.GET("/api/accident-logs", handlers.GetAccidentLogs)
 	router.GET("/api/accident-logs/filter", handlers.GetFilteredAccidentLogs)
 	router.POST("/api/accident-logs", handlers.CreateAccidentLog)
+	router.PUT("/api/accident-logs/:id", handlers.UpdateAccidentLog)
 	router.DELETE("/api/accident-logs/:id", handlers.DeleteAccidentLog)
+	router.GET("/api/accident-logs/:id", handlers.GetAccidentLogDetails)
 
 	// Start server
 	port := os.Getenv("PORT")

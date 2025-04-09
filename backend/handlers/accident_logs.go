@@ -23,6 +23,8 @@ type AccidentLog struct {
 	InvolvedName    string `json:"involved_name"`
 	TimeHour        int    `json:"time_hour"`
 	TimeMinute      int    `json:"time_minute"`
+	Severity        string `json:"severity"`
+	Location        string `json:"location"`
 }
 
 type AuthTokenRequest struct {
@@ -104,11 +106,55 @@ func GetAccidentLogs(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
 		return
 	}
-	fmt.Println("HELLO")
+
 	projectID := os.Getenv("PROCORE_PROJECT_ID")
 	companyID := os.Getenv("PROCORE_COMPANY_ID")
 
 	apiUrl := "https://sandbox.procore.com/rest/v1.0/projects/" + projectID + "/accident_logs"
+
+	req, err := http.NewRequest("GET", apiUrl, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	req.Header.Set("Authorization", accessToken)
+	req.Header.Set("Procore-Company-Id", companyID)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+}
+
+func GetAccidentLogDetails(c *gin.Context) {
+	accessToken := c.GetHeader("Authorization")
+	if accessToken == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
+		return
+	}
+
+	logID := c.Param("id")
+	if logID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Log ID is required"})
+		return
+	}
+
+	projectID := os.Getenv("PROCORE_PROJECT_ID")
+	companyID := os.Getenv("PROCORE_COMPANY_ID")
+
+	apiUrl := "https://sandbox.procore.com/rest/v1.0/projects/" + projectID + "/accident_logs/" + logID
 
 	req, err := http.NewRequest("GET", apiUrl, nil)
 	if err != nil {
@@ -137,60 +183,94 @@ func GetAccidentLogs(c *gin.Context) {
 }
 
 func GetFilteredAccidentLogs(c *gin.Context) {
+	// Get Authorization header
 	accessToken := c.GetHeader("Authorization")
 	if accessToken == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
 		return
 	}
 
+	// Extract query parameters
 	fromDate := c.Query("from_date")
 	toDate := c.Query("to_date")
+	severity := c.Query("severity")
+	company := c.Query("company")
 
-	if fromDate == "" && toDate == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one date parameter is required"})
+	fmt.Println("Received filter parameters:")
+	fmt.Printf("from_date: %s, to_date: %s, severity: %s, company: %s\n", fromDate, toDate, severity, company)
+
+	// ✅ Validate that at least one filter is provided
+	hasFilter := false
+	queryParams := []string{fromDate, toDate, severity, company}
+	for _, param := range queryParams {
+		if param != "" {
+			hasFilter = true
+			break
+		}
+	}
+	if !hasFilter {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one filter parameter is required"})
 		return
 	}
 
+	// Get required environment variables
 	projectID := os.Getenv("PROCORE_PROJECT_ID")
 	companyID := os.Getenv("PROCORE_COMPANY_ID")
 
-	apiUrl := "https://sandbox.procore.com/rest/v1.0/projects/" + projectID + "/accident_logs"
+	if projectID == "" || companyID == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Missing required environment variables"})
+		return
+	}
 
+	// Build Procore API URL
+	baseURL := fmt.Sprintf("https://sandbox.procore.com/rest/v1.0/projects/%s/accident_logs", projectID)
 	params := url.Values{}
+
 	if fromDate != "" {
 		params.Add("filters[date][gte]", fromDate)
 	}
 	if toDate != "" {
 		params.Add("filters[date][lte]", toDate)
 	}
-
-	if len(params) > 0 {
-		apiUrl += "?" + params.Encode()
+	if severity != "" {
+		params.Add("filters[severity]", severity)
+	}
+	if company != "" {
+		params.Add("filters[involved_company]", company)
 	}
 
-	req, err := http.NewRequest("GET", apiUrl, nil)
+	fullURL := baseURL
+	if len(params) > 0 {
+		fullURL += "?" + params.Encode()
+	}
+
+	// Create request to Procore API
+	req, err := http.NewRequest("GET", fullURL, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request: " + err.Error()})
 		return
 	}
 
 	req.Header.Set("Authorization", accessToken)
 	req.Header.Set("Procore-Company-Id", companyID)
 
+	// Execute the request
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to contact Procore API: " + err.Error()})
 		return
 	}
 	defer resp.Body.Close()
 
+	// Read the response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response: " + err.Error()})
 		return
 	}
 
+	// Return the Procore response
 	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 }
 
@@ -218,8 +298,92 @@ func CreateAccidentLog(c *gin.Context) {
 	formData.Set("accident_log[involved_name]", logData.InvolvedName)
 	formData.Set("accident_log[time_hour]", strconv.Itoa(logData.TimeHour))
 	formData.Set("accident_log[time_minute]", strconv.Itoa(logData.TimeMinute))
+	if logData.Severity != "" {
+		formData.Set("accident_log[severity]", logData.Severity)
+	}
+	if logData.Location != "" {
+		formData.Set("accident_log[location]", logData.Location)
+	}
 
 	req, err := http.NewRequest("POST", "https://sandbox.procore.com/rest/v1.0/projects/"+projectID+"/accident_logs", bytes.NewBufferString(formData.Encode()))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	req.Header.Set("Authorization", accessToken)
+	req.Header.Set("Procore-Company-Id", companyID)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+}
+
+func UpdateAccidentLog(c *gin.Context) {
+	accessToken := c.GetHeader("Authorization")
+	if accessToken == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
+		return
+	}
+
+	logID := c.Param("id")
+	if logID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Log ID is required"})
+		return
+	}
+
+	var logData AccidentLog
+	if err := c.ShouldBindJSON(&logData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	projectID := os.Getenv("PROCORE_PROJECT_ID")
+	companyID := os.Getenv("PROCORE_COMPANY_ID")
+
+	formData := url.Values{}
+	if logData.Comments != "" {
+		formData.Set("accident_log[comments]", logData.Comments)
+	}
+	if logData.Date != "" {
+		formData.Set("accident_log[date]", logData.Date)
+	}
+	if logData.Datetime != "" {
+		formData.Set("accident_log[datetime]", logData.Datetime)
+	}
+	if logData.InvolvedCompany != "" {
+		formData.Set("accident_log[involved_company]", logData.InvolvedCompany)
+	}
+	if logData.InvolvedName != "" {
+		formData.Set("accident_log[involved_name]", logData.InvolvedName)
+	}
+	if logData.TimeHour != 0 {
+		formData.Set("accident_log[time_hour]", strconv.Itoa(logData.TimeHour))
+	}
+	if logData.TimeMinute != 0 {
+		formData.Set("accident_log[time_minute]", strconv.Itoa(logData.TimeMinute))
+	}
+	if logData.Severity != "" {
+		formData.Set("accident_log[severity]", logData.Severity)
+	}
+	if logData.Location != "" {
+		formData.Set("accident_log[location]", logData.Location)
+	}
+
+	req, err := http.NewRequest("PUT", "https://sandbox.procore.com/rest/v1.0/projects/"+projectID+"/accident_logs/"+logID, bytes.NewBufferString(formData.Encode()))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
