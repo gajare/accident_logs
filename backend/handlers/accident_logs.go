@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -199,20 +200,6 @@ func GetFilteredAccidentLogs(c *gin.Context) {
 	fmt.Println("Received filter parameters:")
 	fmt.Printf("from_date: %s, to_date: %s, severity: %s, company: %s\n", fromDate, toDate, severity, company)
 
-	// ✅ Validate that at least one filter is provided
-	hasFilter := false
-	queryParams := []string{fromDate, toDate, severity, company}
-	for _, param := range queryParams {
-		if param != "" {
-			hasFilter = true
-			break
-		}
-	}
-	if !hasFilter {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one filter parameter is required"})
-		return
-	}
-
 	// Get required environment variables
 	projectID := os.Getenv("PROCORE_PROJECT_ID")
 	companyID := os.Getenv("PROCORE_COMPANY_ID")
@@ -222,30 +209,11 @@ func GetFilteredAccidentLogs(c *gin.Context) {
 		return
 	}
 
-	// Build Procore API URL
+	// Build Procore API URL to get ALL logs
 	baseURL := fmt.Sprintf("https://sandbox.procore.com/rest/v1.0/projects/%s/accident_logs", projectID)
-	params := url.Values{}
-
-	if fromDate != "" {
-		params.Add("filters[date][gte]", fromDate)
-	}
-	if toDate != "" {
-		params.Add("filters[date][lte]", toDate)
-	}
-	if severity != "" {
-		params.Add("filters[severity]", severity)
-	}
-	if company != "" {
-		params.Add("filters[involved_company]", company)
-	}
-
-	fullURL := baseURL
-	if len(params) > 0 {
-		fullURL += "?" + params.Encode()
-	}
 
 	// Create request to Procore API
-	req, err := http.NewRequest("GET", fullURL, nil)
+	req, err := http.NewRequest("GET", baseURL, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request: " + err.Error()})
 		return
@@ -270,8 +238,63 @@ func GetFilteredAccidentLogs(c *gin.Context) {
 		return
 	}
 
-	// Return the Procore response
-	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+	// Parse the response
+	var logs []map[string]interface{}
+	if err := json.Unmarshal(body, &logs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse response: " + err.Error()})
+		return
+	}
+
+	// Filter logs based on parameters
+	filteredLogs := make([]map[string]interface{}, 0)
+	for _, log := range logs {
+		// Skip if log doesn't have date field
+		logDateStr, ok := log["date"].(string)
+		if !ok {
+			continue
+		}
+
+		logDate, err := time.Parse("2006-01-02", logDateStr)
+		if err != nil {
+			continue
+		}
+
+		// Apply date filters
+		if fromDate != "" {
+			from, err := time.Parse("2006-01-02", fromDate)
+			if err != nil || logDate.Before(from) {
+				continue
+			}
+		}
+
+		if toDate != "" {
+			to, err := time.Parse("2006-01-02", toDate)
+			if err != nil || logDate.After(to) {
+				continue
+			}
+		}
+
+		// Apply severity filter
+		if severity != "" {
+			logSeverity, ok := log["severity"].(string)
+			if !ok || !strings.EqualFold(logSeverity, severity) {
+				continue
+			}
+		}
+
+		// Apply company filter
+		if company != "" {
+			logCompany, ok := log["involved_company"].(string)
+			if !ok || !strings.Contains(strings.ToLower(logCompany), strings.ToLower(company)) {
+				continue
+			}
+		}
+
+		filteredLogs = append(filteredLogs, log)
+	}
+
+	// Return the filtered logs
+	c.JSON(http.StatusOK, filteredLogs)
 }
 
 func CreateAccidentLog(c *gin.Context) {

@@ -1,0 +1,11 @@
+post curl
+
+
+curl -Uri "https://sandbox.procore.com/rest/v1.0/projects/117923/accident_logs" `
+  -Method POST `
+  -Headers @{
+    "Procore-Company-Id" = "4264807";
+    "Content-Type" = "application/x-www-form-urlencoded";
+    "Authorization" = "Bearer eyJhbGciOiJFUzUxMiJ9.eyJhbXIiOltdLCJhaWQiOiJfREt2R2x3WUtzcWU5UXhCaFowMGVaOVJtbU9LZDhkenlvdlVLeFZMNTEwIiwiYW91aWQiOm51bGwsImFvdXVpZCI6bnVsbCwiZXhwIjoxNzQ0MjIwMTM2LCJzaWF0IjpudWxsLCJ1aWQiOjE0ODM1MCwidXVpZCI6ImJlYzNhZGU0LTVkZjctNDljOC04YmVkLWM5MmM0OWQ4MDk0ZSIsImxhc3RfbWZhX2NoZWNrIjoxNzQ0MjE0NzM2fQ.AYYLQwOf1orENNzhEO09ViRvYAKF9phn5r_1Ee3NJebJ271Eo3tUtTqWha0iwzM4C7WuBt0e_ypV-0qBdHEZTV9-ATdhh4j8edgu1HopmKXpARLocvolpRmlbBw1yQDaqXckEiQOB5jhdyAX1KvW0J0Dyxi9Tz0Z1vYub02a6LDVYHIY";
+  } `
+  -Body "accident_log[comments]=Accident Log comments&accident_log[date]=2023-03-01&accident_log[datetime]=2023-03-01T10:00:00Z&accident_log[involved_company]=Procore Technologies&accident_log[involved_name]=Roger&accident_log[time_hour]=10&accident_log[time_minute]=00"

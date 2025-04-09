@@ -1,0 +1,15 @@
+.token-status {
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.token-valid {
+    background-color: #4CAF50; /* Green */
+    color: white;
+}
+
+.token-invalid {
+    background-color: #f44336; /* Red */
+    color: white;
+}
