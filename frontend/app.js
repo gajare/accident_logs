@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fetch accident logs
     function fetchAccidentLogs(filters = {}) {
+        
         if (!accessToken) {
             showError('Please authenticate first');
             return Promise.reject('No access token');
@@ -96,9 +97,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         setLoading(refreshLogsBtn, true);
         
+        // In the fetchAccidentLogs function:
         const params = new URLSearchParams();
-        if (filters.fromDate) params.append('from_date', filters.fromDate);
-        if (filters.toDate) params.append('to_date', filters.toDate);
+        if (filters.fromDate) params.append('start_date', filters.fromDate);
+        if (filters.toDate) params.append('end_date', filters.toDate);
         if (filters.severity) params.append('severity', filters.severity);
         if (filters.company) params.append('company', filters.company);
         

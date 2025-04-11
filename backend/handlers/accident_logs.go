@@ -191,14 +191,14 @@ func GetFilteredAccidentLogs(c *gin.Context) {
 		return
 	}
 
-	// Extract query parameters
-	fromDate := c.Query("from_date")
-	toDate := c.Query("to_date")
+	// Extract query parameters - using start_date and end_date now
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
 	severity := c.Query("severity")
 	company := c.Query("company")
 
 	fmt.Println("Received filter parameters:")
-	fmt.Printf("from_date: %s, to_date: %s, severity: %s, company: %s\n", fromDate, toDate, severity, company)
+	fmt.Printf("start_date: %s, end_date: %s, severity: %s, company: %s\n", startDate, endDate, severity, company)
 
 	// Get required environment variables
 	projectID := os.Getenv("PROCORE_PROJECT_ID")
@@ -209,7 +209,7 @@ func GetFilteredAccidentLogs(c *gin.Context) {
 		return
 	}
 
-	// Build Procore API URL to get ALL logs
+	// Build Procore API URL with date parameters
 	baseURL := fmt.Sprintf("https://sandbox.procore.com/rest/v1.0/projects/%s/accident_logs", projectID)
 
 	// Create request to Procore API
@@ -219,8 +219,19 @@ func GetFilteredAccidentLogs(c *gin.Context) {
 		return
 	}
 
+	// Add query parameters
+	q := req.URL.Query()
+	if startDate != "" {
+		q.Add("start_date", startDate)
+	}
+	if endDate != "" {
+		q.Add("end_date", endDate)
+	}
+	req.URL.RawQuery = q.Encode()
+
 	req.Header.Set("Authorization", accessToken)
 	req.Header.Set("Procore-Company-Id", companyID)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	// Execute the request
 	client := &http.Client{}
@@ -245,35 +256,9 @@ func GetFilteredAccidentLogs(c *gin.Context) {
 		return
 	}
 
-	// Filter logs based on parameters
+	// Apply additional filters (severity and company) locally since Procore API may not support them
 	filteredLogs := make([]map[string]interface{}, 0)
 	for _, log := range logs {
-		// Skip if log doesn't have date field
-		logDateStr, ok := log["date"].(string)
-		if !ok {
-			continue
-		}
-
-		logDate, err := time.Parse("2006-01-02", logDateStr)
-		if err != nil {
-			continue
-		}
-
-		// Apply date filters
-		if fromDate != "" {
-			from, err := time.Parse("2006-01-02", fromDate)
-			if err != nil || logDate.Before(from) {
-				continue
-			}
-		}
-
-		if toDate != "" {
-			to, err := time.Parse("2006-01-02", toDate)
-			if err != nil || logDate.After(to) {
-				continue
-			}
-		}
-
 		// Apply severity filter
 		if severity != "" {
 			logSeverity, ok := log["severity"].(string)
