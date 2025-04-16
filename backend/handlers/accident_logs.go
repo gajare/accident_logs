@@ -258,6 +258,57 @@ func GetFilteredAccidentLogs(c *gin.Context) {
 
 	// Apply additional filters (severity and company) locally since Procore API may not support them
 	filteredLogs := make([]map[string]interface{}, 0)
+
+	// Get search query parameter
+	searchTerm := c.Query("search")
+
+	fmt.Println("Search term:", searchTerm)
+
+	// ... existing code ...
+
+	// Apply search filter
+	if searchTerm != "" {
+		searchTerm = strings.ToLower(searchTerm)
+		filteredBySearch := make([]map[string]interface{}, 0)
+
+		for _, log := range filteredLogs {
+			match := false
+
+			// Check all relevant fields
+			fieldsToSearch := []string{
+				"involved_name",
+				"involved_company",
+				"comments",
+				"location",
+				"severity",
+			}
+
+			for _, field := range fieldsToSearch {
+				if value, ok := log[field].(string); ok {
+					if strings.Contains(strings.ToLower(value), searchTerm) {
+						match = true
+						break
+					}
+				}
+			}
+
+			// Check numeric/date fields if needed
+			if !match {
+				if date, ok := log["date"].(string); ok {
+					if strings.Contains(date, searchTerm) {
+						match = true
+					}
+				}
+			}
+
+			if match {
+				filteredBySearch = append(filteredBySearch, log)
+			}
+		}
+
+		filteredLogs = filteredBySearch
+	}
+
 	for _, log := range logs {
 		// Apply severity filter
 		if severity != "" {

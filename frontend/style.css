@@ -13,3 +13,11 @@
     background-color: #f44336; /* Red */
     color: white;
 }
+.filters {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+/* Add this to make search input wider if needed */
+#searchFilter {
+    min-width: 250px;
+}

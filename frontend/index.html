@@ -318,6 +318,10 @@
         
         <div class="filters">
             <div class="filter-group">
+                <label for="searchFilter">Search</label>
+                <input type="text" id="searchFilter" placeholder="Search logs...">
+            </div>
+            <div class="filter-group">
                 <label for="fromDate">From Date</label>
                 <input type="date" id="fromDate">
             </div>
@@ -339,6 +343,7 @@
                 <input type="text" id="companyFilter" placeholder="Filter by company">
             </div>
             <div class="filter-actions">
+                <button id="filterSearchBtn">Search Logs</button>
                 <button id="filterLogsBtn">Apply Filters</button>
                 <button id="clearFilterBtn" class="danger-btn">Clear</button>
             </div>

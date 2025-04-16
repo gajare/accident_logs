@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentFilters = {};
 
     // DOM elements
+    const searchFilter = document.getElementById('searchFilter');
     const getAuthBtn = document.getElementById('getAuthBtn');
     const getTokenBtn = document.getElementById('getTokenBtn');
     const authCodeInput = document.getElementById('authCode');
@@ -15,6 +16,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const severityFilter = document.getElementById('severityFilter');
     const companyFilter = document.getElementById('companyFilter');
     const filterLogsBtn = document.getElementById('filterLogsBtn');
+    const filterSearchBtn = document.getElementById('filterSearchBtn');
+
     const clearFilterBtn = document.getElementById('clearFilterBtn');
 
     // Set default date values to current month
@@ -40,6 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
     getTokenBtn.addEventListener('click', getAccessToken);
     refreshLogsBtn.addEventListener('click', () => fetchAccidentLogs(currentFilters));
     filterLogsBtn.addEventListener('click', applyDateFilter);
+    filterSearchBtn.addEventListener('click', applyDateFilter);
     clearFilterBtn.addEventListener('click', clearDateFilter);
 
     // Get authorization code
@@ -169,6 +173,33 @@ document.addEventListener('DOMContentLoaded', function() {
         `).join('');
     }
 
+    // Add debounce to search input
+    let searchTimeout;
+    searchFilter.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            applyDateFilter();
+        }, 500);
+    });
+
+    function applySearchFilter() {
+
+        const searchTerm = searchFilter.value.trim();
+        setLoading(filterLogsBtn, true);
+
+        currentFilters = {
+            ...(searchTerm && { search: searchTerm })
+        };
+
+        fetchAccidentLogs(currentFilters)
+            .catch(error => {
+                console.error('Filter error:', error);
+                showError('Failed to apply filters. Please try again.');
+            })
+            .finally(() => {
+                setLoading(filterLogsBtn, false);
+            });
+    }
     // Apply date filter
     function applyDateFilter() {
         const fromDate = fromDateInput.value;
@@ -193,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ...(fromDate && { fromDate }),
             ...(toDate && { toDate }),
             ...(severity && { severity }),
-            ...(company && { company })
+            ...(company && { company }),
         };
 
         fetchAccidentLogs(currentFilters)
